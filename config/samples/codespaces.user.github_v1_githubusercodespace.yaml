@@ -1,0 +1,12 @@
+apiVersion: codespaces.user.github.nttdata.com/v1
+kind: GithubUserCodespace
+metadata:
+  labels:
+    app.kubernetes.io/name: githubusercodespace
+    app.kubernetes.io/instance: githubusercodespace-sample
+    app.kubernetes.io/part-of: knot-github-codespace
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: knot-github-codespace
+  name: githubusercodespace-sample
+spec:
+  # TODO(user): Add fields here

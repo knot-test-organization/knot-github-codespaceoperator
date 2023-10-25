@@ -1,0 +1,69 @@
+---
+# tasks file for Codespaces
+- name: Set PAT variable
+  set_fact:
+    PAT: "{{ lookup('env','PAT') }}"
+
+- name: Get repository_id
+  uri:
+    url: "https://api.github.com/repos/{{ organization_name }}/{{ repo_name }}"
+    method: GET
+    headers: 
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ PAT }}"
+    status_code: 200
+  register: curl_response
+  ignore_errors: true
+
+- name: Get the Token variable
+  shell: "kubectl get secret {{ repo_name }}-{{ username }}-token -o jsonpath='{.data.{{ repo_name }}-{{ username }}-token}' | base64 --decode"
+  register: token_output
+
+# - name: Create Sealed Secret with the previous token
+#   shell: "kubectl create secret generic {{ username }}-token --dry-run=client --from-literal=githubToken={{ token_output.stdout }} -o yaml |  kubeseal --controller-name=sealed-secrets-controller --controller-namespace=kube-system --format yaml > /tmp/mysealedsecret.yaml"
+   
+# - name: Apply Sealed secret
+#   shell: "kubectl apply -f /tmp/mysealedsecret.yaml"
+
+
+- name: List codespaces in a repository
+  uri:
+    url: "https://api.github.com/repos/{{ organization_name }}/{{ repo_name }}/codespaces"
+    method: GET
+    headers: 
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ token_output.stdout }}"
+    status_code: 200
+  register: codespaces_response
+  ignore_errors: true
+
+- name: Set codespace name variable
+  set_fact:
+    cd_name: "{{ devcontainer }}"
+
+- name: Create codespace
+  uri:
+    url: https://api.github.com/user/codespaces
+    method: POST
+    headers:
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ token_output.stdout }}"
+    body_format: json
+    body: '{"repository_id":{{ curl_response.json.id }},"ref":"{{ branch }}","geo":"{{ region }}","machine":"{{ machine_type }}","devcontainer_path":".devcontainer/{{ devcontainer }}/devcontainer.json","display_name":"{{ devcontainer }}"}'
+    status_code: 201
+  ignore_errors: true
+  when: "cd_name != item.display_name"
+  loop: "{{ codespaces_response.json.codespaces }}"
+
+- name: Create codespace when no codespaces exist
+  uri:
+    url: https://api.github.com/user/codespaces
+    method: POST
+    headers:
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ token_output.stdout }}"
+    body_format: json
+    body: '{"repository_id":{{ curl_response.json.id }},"ref":"{{ branch }}","geo":"{{ region }}","machine":"{{ machine_type }}","devcontainer_path":".devcontainer/{{ devcontainer }}/devcontainer.json","display_name":"{{ devcontainer }}"}'
+    status_code: 201
+  ignore_errors: true
+  when: codespaces_response.json.codespaces | length == 0

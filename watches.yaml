@@ -1,0 +1,11 @@
+---
+# Use the 'create api' subcommand to add watches to this file.
+- version: v1
+  group: codespaces.user.github.nttdata.com
+  kind: GithubUserCodespace
+  playbook: playbooks/githubusercodespace-create.yml
+  finalizer:
+    name: codespaces.user.github.nttdata.com
+    playbook: playbooks/githubusercodespace-delete.yml
+  # FIXME: Specify the role or playbook for this resource.
+#+kubebuilder:scaffold:watch

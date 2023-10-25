@@ -1,0 +1,41 @@
+---
+- name: set PAT variable
+  set_fact:
+    PAT: "{{ lookup('env','PAT') }}"
+
+
+- name: Get the Token variable
+  shell: "kubectl get secret {{ repo_name }}-{{ username }}-token -o jsonpath='{.data.{{ repo_name }}-{{ username }}-token}' | base64 --decode"
+  register: token_output
+
+
+- name: List codespaces in a repository
+  uri:
+    url: "https://api.github.com/repos/{{ organization_name }}/{{ repo_name }}/codespaces"
+    method: GET
+    headers: 
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ token_output.stdout }}"
+    status_code: 200
+  register: codespaces_response
+  ignore_errors: true
+
+- name: Set codespace name variable
+  set_fact:
+    cd_name: "{{ devcontainer }}"
+
+- name: Get codespace name
+  set_fact:
+    codespace_name: "{{ item.name }}"
+  when: "cd_name == item.display_name"
+  loop: "{{ codespaces_response.json.codespaces }}"
+
+- name: Delete codespace
+  uri:
+    url: "https://api.github.com/user/codespaces/{{ codespace_name }}"
+    method: DELETE
+    headers:
+      Accept: "application/vnd.github+json"
+      Authorization: "Bearer {{ token_output.stdout }}"
+    status_code: 202
+  ignore_errors: true
